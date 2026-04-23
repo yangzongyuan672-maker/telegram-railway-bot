@@ -378,16 +378,12 @@ def process_link_to_memory(text_content, chat_id):
     return True
 
 
-def build_collection_prompt(items, keyword_hint="今日折扣", is_search_mode=False):
-    title = "加拿大今日折扣盘点！"
-    if is_search_mode and keyword_hint:
-        title = f"加拿大{keyword_hint}折扣盘点！"
-
+def build_collection_prompt(items):
     return f"""
 你是“值得买加拿大站”的小编。请严格按下面固定格式输出，不要自由发挥结构，不要用 Markdown，不要加粗，不要输出解释。
 
 标题：
-{title}
+加拿大今日折扣盘点！
 
 商品资料：
 {json.dumps(items, ensure_ascii=False)}
@@ -409,6 +405,44 @@ def build_collection_prompt(items, keyword_hint="今日折扣", is_search_mode=F
 #加拿大今日好价 #加拿大折扣码 #加拿大亚马逊 #值得买加拿大站 #多伦多 #省钱攻略 #折扣力度大 #加拿大生活
 7. 全文只输出：标题、开始语、序号商品、小编推荐、结束语、标签。
 8. 不要出现“ASIN”“Markdown”“以下是”等字样。
+""".strip()
+
+
+def build_search_prompt(items, keyword):
+    return f"""
+你是“值得买加拿大站”的小编。请严格按这个固定格式输出“盘点 {keyword}”结果，不要用 Markdown，不要加粗，不要输出解释。
+
+商品资料：
+{json.dumps(items, ensure_ascii=False)}
+
+硬性要求：
+1. 开头第一行固定输出：
+🏆 盘点完成！前5名已加入列表：
+
+2. 然后空一行，写一段很有带入感的开场白，语气要像截图里那种“姐妹们、别愁啦、快来看看”风格，2到4句，热情一点。
+
+3. 然后单独一行输出分隔线：
+---
+
+4. 然后输出标题，格式固定类似：
+2026年加拿大最值得入手的5款{keyword}推荐
+
+5. 然后开始编号列表，格式必须像这样：
+1. 商品名（直接搜代码：ASIN）
+   ✨ 一段小编推荐，2到3句，口语化、种草感强
+   💰 价格：$xx.xx
+   🌟 评分：高达4.3分，有123456个真实评价，这么多姐妹都说好，绝对错不了！
+
+6. 必须写满5个商品。
+
+7. 最后再单独一行输出：
+---
+
+8. 最后写结束语，风格要像截图里那样，热情、催单、带互动感，2到4句。
+
+9. 最后一段输出话题标签，和{keyword}相关，6到10个。
+
+10. 全文只输出以上结构，不要输出“以下是”“当然可以”“Markdown”这些说明词。
 """.strip()
 
 
@@ -454,7 +488,7 @@ def handle_text(message):
             bot.send_message(chat_id, "列表还是空的，先发商品链接或先盘点选品。")
             return
 
-        prompt = build_collection_prompt(items, "今日折扣", False)
+        prompt = build_collection_prompt(items)
         try:
             result = model.generate_content(prompt).text
             bot.send_message(chat_id, f"文案已生成：\n\n{result}")
@@ -495,7 +529,7 @@ def handle_text(message):
             daily_items.setdefault(chat_id, []).append(info)
             item_data.append(info)
 
-        prompt = build_collection_prompt(item_data, keyword, True)
+        prompt = build_search_prompt(item_data, keyword)
         try:
             result_text = model.generate_content(prompt).text
             bot.edit_message_text(
