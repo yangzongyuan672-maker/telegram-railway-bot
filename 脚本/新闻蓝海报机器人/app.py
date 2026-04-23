@@ -1,9 +1,8 @@
-﻿import datetime
 import io
 import json
 import os
 import re
-from pathlib import Path
+from datetime import datetime
 
 import telebot
 from dotenv import load_dotenv
@@ -28,45 +27,45 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 user_cart = {}
 
 
-def get_font(size: int, bold: bool = False):
-    candidates = []
+def get_font(size, bold=False):
+    paths = []
     if bold:
-        candidates.extend([
+        paths += [
             "C:/Windows/Fonts/msyhbd.ttc",
             "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
             "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
-        ])
-    candidates.extend([
+        ]
+    paths += [
         "C:/Windows/Fonts/msyh.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    ])
-    for path in candidates:
+    ]
+    for path in paths:
         try:
             return ImageFont.truetype(path, size)
         except Exception:
-            continue
+            pass
     return ImageFont.load_default()
 
 
-def reset_user(chat_id: int):
+def reset_user(chat_id):
     user_cart[chat_id] = {"poster_data": [], "xhs": [], "pending_url": ""}
 
 
-def ensure_user(chat_id: int):
+def ensure_user(chat_id):
     if chat_id not in user_cart:
         reset_user(chat_id)
 
 
-def wrap_text(draw: ImageDraw.ImageDraw, text: str, font, max_width: int):
+def wrap_text(draw, text, font, max_width):
     lines = []
     current = ""
     for char in text:
-        candidate = current + char
-        bbox = draw.textbbox((0, 0), candidate, font=font)
+        test = current + char
+        bbox = draw.textbbox((0, 0), test, font=font)
         if bbox[2] - bbox[0] <= max_width:
-            current = candidate
+            current = test
         else:
             if current:
                 lines.append(current)
@@ -85,55 +84,43 @@ def draw_multiline(draw, text, font, x, y, max_width, fill, line_gap=12):
     return y + len(lines) * line_height
 
 
-def parse_json_text(text: str):
-    cleaned = text.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+def parse_json_text(text):
+    cleaned = text.strip().replace("```json", "").replace("```", "").strip()
     return json.loads(cleaned)
 
 
-def analyze_product_image(image_bytes: bytes, caption: str = ""):
+def analyze_product_image(image_bytes, caption=""):
     prompt = f"""
 请查看这张商品截图。补充信息：{caption or '无'}
 
 请严格返回 JSON 对象，字段只能有 data_line 和 xhs_line。
-
-规则：
-1. data_line 用竖线 | 分隔，格式必须是：标签|商品名|XX% OFF|原价|现价|一句话概述
-2. 标签必须只能 2 个字。
+1. data_line 格式必须是：标签|商品名|XX% OFF|原价|现价|一句话概述
+2. 标签只能 2 个字。
 3. 货币统一写 C$。
-4. 商品名和一句话概述要简洁。
-5. xhs_line 是小红书大白话文案，不要包含网址。
-6. 只返回 JSON，不要返回解释。
-
-示例：
-{{
-  "data_line": "服饰|lululemon运动夹克|60% OFF|C$148|C$59|黑白百搭断码速抢",
-  "xhs_line": "lululemon这款夹克现在直接打6折，原价C$148现在只要C$59！黑白配色特别好搭，材质轻薄透气，官网已经开始断码了。"
-}}
+4. xhs_line 是小红书大白话文案，不要包含网址。
+5. 只返回 JSON，不要返回解释。
 """.strip()
 
     image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
-    config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-        response_schema={
-            "type": "object",
-            "properties": {
-                "data_line": {"type": "string"},
-                "xhs_line": {"type": "string"},
-            },
-            "required": ["data_line", "xhs_line"],
-        },
-    )
     response = client.models.generate_content(
         model=MODEL_NAME,
         contents=[prompt, image_part],
-        config=config,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema={
+                "type": "object",
+                "properties": {
+                    "data_line": {"type": "string"},
+                    "xhs_line": {"type": "string"},
+                },
+                "required": ["data_line", "xhs_line"],
+            },
+        ),
     )
     return parse_json_text(response.text)
 
 
-def build_item_struct(data_line: str, xhs_line: str):
+def build_item_struct(data_line, xhs_line):
     parts = [p.strip() for p in data_line.split("|")]
     if len(parts) < 6:
         return {
@@ -147,7 +134,7 @@ def build_item_struct(data_line: str, xhs_line: str):
         }
     tag, name, discount, old_price, new_price, desc = parts[:6]
     return {
-        "tag": tag[:2] or "好物",
+        "tag": (tag or "好物")[:2],
         "name": name,
         "discount": discount,
         "old_price": old_price,
@@ -161,45 +148,36 @@ def generate_poster_image(items):
     bg = Image.new("RGB", (1200, 1600), "#FFFFFF")
     draw = ImageDraw.Draw(bg)
 
-    title_font = get_font(68, bold=True)
+    title_font = get_font(68, True)
     sub_font = get_font(34)
-    num_font = get_font(38, bold=True)
+    num_font = get_font(38, True)
     body_font = get_font(32)
     small_font = get_font(26)
 
     draw.rectangle([(0, 0), (1200, 170)], fill="#0A56A6")
     draw.text((60, 38), "值得买加拿大站", fill="white", font=title_font)
-    date_text = datetime.datetime.now().strftime("%Y年%m月%d日")
-    draw.text((63, 112), f"{date_text} 今日折扣速览", fill="#D9E7F7", font=sub_font)
+    draw.text((63, 112), f"{datetime.now().strftime('%Y年%m月%d日')} 今日折扣速览", fill="#D9E7F7", font=sub_font)
 
     y = 220
     for idx, item in enumerate(items, start=1):
         if y > 1450:
             break
-
         draw.text((60, y), f"{idx}.", fill="#0A56A6", font=num_font)
-        tag_x1 = 130
-        tag_x2 = 130 + 84
-        tag_y2 = y + 38
-        draw.rounded_rectangle([(tag_x1, y + 2), (tag_x2, tag_y2)], radius=8, fill="#0A56A6")
-        draw.text((tag_x1 + 14, y + 4), item["tag"], fill="white", font=small_font)
+        draw.rounded_rectangle([(130, y + 2), (214, y + 38)], radius=8, fill="#0A56A6")
+        draw.text((144, y + 4), item["tag"], fill="white", font=small_font)
 
         text_x = 235
-        y_after_name = draw_multiline(draw, item["name"], get_font(34, bold=True), text_x, y, 900, "#222222", 6)
-
-        detail = f"{item['discount']}  原{item['old_price']}  现{item['new_price']}"
-        if detail.strip():
+        y_after_name = draw_multiline(draw, item["name"], get_font(34, True), text_x, y, 900, "#222222", 6)
+        detail = f"{item['discount']}  原{item['old_price']}  现{item['new_price']}".strip()
+        if detail:
             draw.text((text_x, y_after_name), detail, fill="#0A56A6", font=body_font)
             y_after_name += 48
-
         desc_text = item["desc"] or item["xhs_line"]
         y = draw_multiline(draw, desc_text, body_font, text_x, y_after_name, 900, "#333333", 10) + 18
         draw.line([(60, y), (1140, y)], fill="#D7E4F3", width=2)
         y += 18
 
-    footer = "更多加拿大好价和折扣码，记得及时收藏。"
-    draw.text((60, 1520), footer, fill="#0A56A6", font=sub_font)
-
+    draw.text((60, 1520), "更多加拿大好价和折扣码，记得及时收藏。", fill="#0A56A6", font=sub_font)
     out = io.BytesIO()
     bg.save(out, format="PNG")
     out.seek(0)
@@ -207,8 +185,7 @@ def generate_poster_image(items):
 
 
 def build_xhs_copy(lines):
-    today_str = datetime.datetime.now().strftime("%Y年%m月%d日")
-    text = f"{today_str} 加拿大今天什么又打折了？\n\n"
+    text = f"{datetime.now().strftime('%Y年%m月%d日')} 加拿大今天什么又打折了？\n\n"
     for i, line in enumerate(lines, start=1):
         text += f"{i}）{line}\n\n"
     text += "#加拿大折扣 #加拿大亚马逊 #多伦多 #温哥华 #加拿大生活 #省钱攻略 #加拿大今日好价 #值得买加拿大站"
@@ -225,7 +202,6 @@ def send_welcome(message):
 def handle_text(message):
     chat_id = message.chat.id
     ensure_user(chat_id)
-
     urls = re.findall(r"(https?://[^\s]+)", message.text)
     if urls:
         user_cart[chat_id]["pending_url"] = urls[0]
@@ -238,16 +214,13 @@ def handle_text(message):
 def handle_photo(message):
     chat_id = message.chat.id
     ensure_user(chat_id)
-
     current_count = len(user_cart[chat_id]["poster_data"])
     status = bot.reply_to(message, f"收到第 {current_count + 1} 张图，正在识别...")
 
     try:
         file_info = bot.get_file(message.photo[-1].file_id)
         image_bytes = bot.download_file(file_info.file_path)
-        caption = message.caption or ""
-
-        result = analyze_product_image(image_bytes, caption)
+        result = analyze_product_image(image_bytes, message.caption or "")
         item = build_item_struct(result.get("data_line", ""), result.get("xhs_line", ""))
         user_cart[chat_id]["poster_data"].append(item)
         user_cart[chat_id]["xhs"].append(item["xhs_line"])
@@ -258,14 +231,13 @@ def handle_photo(message):
 
         if current_count >= ITEMS_TARGET:
             bot.send_message(chat_id, "已收齐，正在合成海报和文案...")
-            poster = generate_poster_image(user_cart[chat_id]["poster_data"])
-            bot.send_photo(chat_id, poster)
+            bot.send_photo(chat_id, generate_poster_image(user_cart[chat_id]["poster_data"]))
             bot.send_message(chat_id, build_xhs_copy(user_cart[chat_id]["xhs"]))
             reset_user(chat_id)
     except Exception as exc:
         bot.reply_to(message, f"处理图片失败：{exc}")
 
 
-if __name__ == '__main__':
-    print('news blue bot is running')
+if __name__ == "__main__":
+    print("news blue bot is running")
     bot.polling(none_stop=True)
