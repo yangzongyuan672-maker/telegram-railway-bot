@@ -16,14 +16,14 @@ from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 
 load_dotenv()
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
-GEMINI_KEY = os.getenv("GEMINI_KEY", "")
-RAINFOREST_KEY = os.getenv("RAINFOREST_KEY", "")
-AMZ_TAG = os.getenv("AMZ_TAG", "zhidemai0a-20")
-SHOPIFY_DOMAIN = os.getenv("SHOPIFY_DOMAIN", "")
-SHOPIFY_ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN", "")
-BLOG_ID = os.getenv("BLOG_ID", "")
-BOT_FONT_PATH = os.getenv("BOT_FONT_PATH", "")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
+GEMINI_KEY = os.getenv("GEMINI_KEY", "").strip()
+RAINFOREST_KEY = os.getenv("RAINFOREST_KEY", "").strip()
+AMZ_TAG = os.getenv("AMZ_TAG", "zhidemai0a-20").strip()
+SHOPIFY_DOMAIN = os.getenv("SHOPIFY_DOMAIN", "").strip()
+SHOPIFY_ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN", "").strip()
+BLOG_ID = os.getenv("BLOG_ID", "").strip()
+BOT_FONT_PATH = os.getenv("BOT_FONT_PATH", "").strip()
 
 VALID_DOMAINS = ["myshopify.com", "worthbuy.ca", "zhidemai.ca"]
 
@@ -544,6 +544,7 @@ def handle_photos(message):
 
 print("Bot is running.")
 bot.polling(none_stop=True)
+
 
 
 
