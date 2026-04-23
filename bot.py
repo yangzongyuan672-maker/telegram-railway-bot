@@ -378,19 +378,37 @@ def process_link_to_memory(text_content, chat_id):
     return True
 
 
-def build_collection_prompt(items, keyword_hint="今日好价"):
+def build_collection_prompt(items, keyword_hint="今日折扣", is_search_mode=False):
+    title = "加拿大今日折扣盘点！"
+    if is_search_mode and keyword_hint:
+        title = f"加拿大{keyword_hint}折扣盘点！"
+
     return f"""
-请你扮演“值得买加拿大站”的小编，写一篇适合发小红书的盘点文案。
+你是“值得买加拿大站”的小编。请严格按下面固定格式输出，不要自由发挥结构，不要用 Markdown，不要加粗，不要输出解释。
 
-标题方向：加拿大今日折扣 / {keyword_hint}
-商品资料：{json.dumps(items, ensure_ascii=False)}
+标题：
+{title}
 
-要求：
-1. 开头要像朋友分享，热情自然。
-2. 每个商品用中文简短介绍，并保留代码或 ASIN。
-3. 多用 emoji，但不要使用星号加粗。
-4. 最后补一段引导互动的话，并加 4 到 6 个相关标签。
-5. 直接输出纯文本，不要输出 Markdown。
+商品资料：
+{json.dumps(items, ensure_ascii=False)}
+
+硬性要求：
+1. 第一行只输出标题。
+2. 第二段输出“开始语”，风格像日常分享，2到3句。
+3. 然后按顺序输出商品，必须是这种结构：
+1️⃣ 商品标题
+小编推荐：这里写 2 到 3 句推荐理由，强调实用场景、适合什么人、为什么值得看。
+
+2️⃣ 商品标题
+小编推荐：......
+
+依次写完全部商品。
+4. 商品标题要简洁中文化，可以保留品牌名。
+5. 最后再写“结束语”，2句左右，提醒折扣可能限时、感兴趣先看。
+6. 最后一段只输出话题标签，8个左右，格式类似：
+#加拿大今日好价 #加拿大折扣码 #加拿大亚马逊 #值得买加拿大站 #多伦多 #省钱攻略 #折扣力度大 #加拿大生活
+7. 全文只输出：标题、开始语、序号商品、小编推荐、结束语、标签。
+8. 不要出现“ASIN”“Markdown”“以下是”等字样。
 """.strip()
 
 
@@ -436,7 +454,7 @@ def handle_text(message):
             bot.send_message(chat_id, "列表还是空的，先发商品链接或先盘点选品。")
             return
 
-        prompt = build_collection_prompt(items)
+        prompt = build_collection_prompt(items, "今日折扣", False)
         try:
             result = model.generate_content(prompt).text
             bot.send_message(chat_id, f"文案已生成：\n\n{result}")
@@ -477,7 +495,7 @@ def handle_text(message):
             daily_items.setdefault(chat_id, []).append(info)
             item_data.append(info)
 
-        prompt = build_collection_prompt(item_data, keyword)
+        prompt = build_collection_prompt(item_data, keyword, True)
         try:
             result_text = model.generate_content(prompt).text
             bot.edit_message_text(
