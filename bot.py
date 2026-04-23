@@ -1,7 +1,4 @@
-把整个 `bot.py` 全部替换成下面这份，最省事。  
-这版已经把 `TELEGRAM_TOKEN` 这些环境变量都加了 `.strip()`，也保留了你原来的功能。
 
-```python
 import os
 import re
 import json
