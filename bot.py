@@ -1,4 +1,3 @@
-
 import os
 import re
 import json
@@ -90,7 +89,10 @@ def search_top_5_amazon(keyword):
             params=params,
             timeout=45,
         ).json()
-        results = [item for item in res.get("search_results", []) if not item.get("sponsored", False)]
+        results = [
+            item for item in res.get("search_results", [])
+            if not item.get("sponsored", False)
+        ]
         results.sort(key=lambda x: x.get("ratings_total", 0), reverse=True)
 
         unique_items = []
@@ -221,7 +223,7 @@ def post_to_shopify_blog(items, chat_id):
         )
         body_html += (
             f'<div style="border-top: 1px solid #eee; padding: 20px 0;">'
-            f'<p style="font-size: 20px;"><b>{idx+1}. {item["title"]}</b></p>'
+            f'<p style="font-size: 20px;"><b>{idx + 1}. {item["title"]}</b></p>'
             f"{img_html}"
             f'<p>直接搜代码：<span style="color: #00A8E1; font-weight: bold;">{item["code"]}</span></p>'
             f"<p>折扣力度：{item['value']}</p>"
@@ -253,10 +255,17 @@ def post_to_shopify_blog(items, chat_id):
                 {
                     "namespace": "custom",
                     "key": "pingfen",
-                    "value": json.dumps({"value": "5.0", "scale_min": "1.0", "scale_max": "5.0"}),
+                    "value": json.dumps(
+                        {"value": "5.0", "scale_min": "1.0", "scale_max": "5.0"}
+                    ),
                     "type": "rating",
                 },
-                {"namespace": "custom", "key": "pingjiashuliang", "value": "200", "type": "number_integer"},
+                {
+                    "namespace": "custom",
+                    "key": "pingjiashuliang",
+                    "value": "200",
+                    "type": "number_integer",
+                },
             ],
         }
     }
@@ -357,6 +366,17 @@ def handle_text(message):
         prompt = f"写一篇小红书盘点文案。标题：加拿大今日折扣。商品列表：{str(items)}。禁止用星号加粗！多用Emoji。"
         bot.send_message(chat_id, f"📝 文案生成完毕：\n\n{model.generate_content(prompt).text}")
 
+    elif text == "💡 怎么一键盘点选品？":
+        help_text = (
+            "直接发：盘点 关键词\n\n"
+            "例如：\n"
+            "盘点 空气炸锅\n"
+            "盘点 咖啡机\n"
+            "盘点 吸尘器\n\n"
+            "我会自动抓取 Amazon 加拿大站热门商品，并生成盘点文案。"
+        )
+        bot.send_message(chat_id, help_text, reply_markup=get_main_menu())
+
     elif text.startswith("盘点 "):
         keyword = text.replace("盘点 ", "").strip()
         msg = bot.send_message(chat_id, f"📡 正在搜罗【{keyword}】的真实爆款...")
@@ -381,7 +401,7 @@ def handle_text(message):
             daily_items[chat_id].append(info)
 
             item_data_str += (
-                f"第{idx+1}名: {info['title']}\n"
+                f"第{idx + 1}名: {info['title']}\n"
                 f"ASIN: {info['code']}\n"
                 f"价格: {info['value']}\n"
                 f"评分: {info['rating']}\n"
@@ -470,4 +490,3 @@ def handle_photos(message):
 
 print("🚀 完美排版机器人已启动！")
 bot.polling(none_stop=True)
-♀♀♀analysis to=functions.shell_command  大发快三怎么json  information you provided."}
