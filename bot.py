@@ -1,3 +1,7 @@
+把整个 `bot.py` 全部替换成下面这份，最省事。  
+这版已经把 `TELEGRAM_TOKEN` 这些环境变量都加了 `.strip()`，也保留了你原来的功能。
+
+```python
 import os
 import re
 import json
@@ -13,13 +17,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
-GEMINI_KEY = os.getenv("GEMINI_KEY", "")
-RAINFOREST_KEY = os.getenv("RAINFOREST_KEY", "")
-AMZ_TAG = os.getenv("AMZ_TAG", "zhidemai0a-20")
-SHOPIFY_DOMAIN = os.getenv("SHOPIFY_DOMAIN", "")
-SHOPIFY_ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN", "")
-BLOG_ID = os.getenv("BLOG_ID", "")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
+GEMINI_KEY = os.getenv("GEMINI_KEY", "").strip()
+RAINFOREST_KEY = os.getenv("RAINFOREST_KEY", "").strip()
+AMZ_TAG = os.getenv("AMZ_TAG", "zhidemai0a-20").strip()
+SHOPIFY_DOMAIN = os.getenv("SHOPIFY_DOMAIN", "").strip()
+SHOPIFY_ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN", "").strip()
+BLOG_ID = os.getenv("BLOG_ID", "").strip()
 
 VALID_DOMAINS = ["myshopify.com", "worthbuy.ca", "zhidemai.ca"]
 
@@ -187,7 +191,9 @@ def make_cover():
     draw.text((150, 300), date_str, fill="#666666", font=f_t)
 
     try:
-        flag = Image.open(io.BytesIO(requests.get("https://flagcdn.com/w160/ca.png", timeout=30).content)).convert("RGBA").resize((140, 70))
+        flag = Image.open(
+            io.BytesIO(requests.get("https://flagcdn.com/w160/ca.png", timeout=30).content)
+        ).convert("RGBA").resize((140, 70))
         bg.paste(flag, (150, 520), flag)
         draw.text((320, 480), "分享几个", fill="#333333", font=f_t)
     except Exception:
@@ -226,7 +232,11 @@ def post_to_shopify_blog(items, chat_id):
         )
 
     first_item = items[0]
-    out_url = f"https://www.amazon.ca/dp/{first_item['code']}?tag={AMZ_TAG}" if len(first_item["code"]) == 10 else "https://zhidemai.ca"
+    out_url = (
+        f"https://www.amazon.ca/dp/{first_item['code']}?tag={AMZ_TAG}"
+        if len(first_item["code"]) == 10
+        else "https://zhidemai.ca"
+    )
     url = f"https://{SHOPIFY_DOMAIN}/admin/api/2024-01/blogs/{BLOG_ID}/articles.json"
     headers = {
         "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
@@ -352,7 +362,7 @@ def handle_text(message):
 
     elif text.startswith("盘点 "):
         keyword = text.replace("盘点 ", "").strip()
-        msg = bot.send_message(chat_id, f"📡 正在搜罗的真实爆款...")
+        msg = bot.send_message(chat_id, f"📡 正在搜罗【{keyword}】的真实爆款...")
 
         top_items = search_top_5_amazon(keyword)
         if not top_items:
@@ -398,7 +408,7 @@ def handle_text(message):
    (以此类推写完5个)
 3. 结尾：热情互动，号召大家去搜代码购买。
 4. 标签：结尾加上相关的话题标签，如 #{keyword} #加拿大生活 #亚马逊好物 等。
-5. ：绝对禁止在任何地方使用星号（*）进行加粗或排版！必须输出干净的纯文本！
+5. 【核心警告】：绝对禁止在任何地方使用星号（*）进行加粗或排版！必须输出干净的纯文本！
 """
         try:
             result_text = model.generate_content(prompt).text
@@ -463,3 +473,4 @@ def handle_photos(message):
 
 print("🚀 完美排版机器人已启动！")
 bot.polling(none_stop=True)
+♀♀♀analysis to=functions.shell_command  大发快三怎么json  information you provided."}
