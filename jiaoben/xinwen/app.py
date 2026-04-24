@@ -28,24 +28,23 @@ user_cart = {}
 
 
 def get_font(size, bold=False):
-    paths = []
-    if bold:
-        paths += [
-            "C:/Windows/Fonts/msyhbd.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-            "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
-        ]
-    paths += [
-        "C:/Windows/Fonts/msyh.ttc",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    # 优先读取刚才在云端上传的字体
+    paths = [
+        "fonts/simhei.ttf"
     ]
+    
+    # 备用：电脑本地测试用的系统字体
+    if bold:
+        paths += ["C:/Windows/Fonts/msyhbd.ttc", "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc"]
+    else:
+        paths += ["C:/Windows/Fonts/msyh.ttc", "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"]
+
     for path in paths:
         try:
             return ImageFont.truetype(path, size)
         except Exception:
             pass
+            
     return ImageFont.load_default()
 
 
