@@ -5,12 +5,13 @@ import re
 from datetime import datetime
 
 import telebot
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from html2image import Html2Image  # 换回了强大的网页排版工具
+from PIL import Image, ImageDraw, ImageFont
 
+load_dotenv()
 
-# 安全读取环境变量，不会暴露你的 API
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 ITEMS_TARGET = int(os.getenv("ITEMS_TARGET", "6").strip() or "6")
@@ -25,9 +26,27 @@ bot = telebot.TeleBot(TELEGRAM_TOKEN)
 client = genai.Client(api_key=GEMINI_API_KEY)
 user_cart = {}
 
-# 初始化网页截图工具，尺寸定为 1200x1600
-hti = Html2Image()
-hti.size = (1200, 1600)
+
+def get_font(size, bold=False):
+    paths = []
+    if bold:
+        paths += [
+            "C:/Windows/Fonts/msyhbd.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+            "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
+        ]
+    paths += [
+        "C:/Windows/Fonts/msyh.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
+    for path in paths:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            pass
+    return ImageFont.load_default()
 
 
 def reset_user(chat_id):
@@ -37,6 +56,32 @@ def reset_user(chat_id):
 def ensure_user(chat_id):
     if chat_id not in user_cart:
         reset_user(chat_id)
+
+
+def wrap_text(draw, text, font, max_width):
+    lines = []
+    current = ""
+    for char in text:
+        test = current + char
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] <= max_width:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+            current = char
+    if current:
+        lines.append(current)
+    return lines or [""]
+
+
+def draw_multiline(draw, text, font, x, y, max_width, fill, line_gap=12):
+    lines = wrap_text(draw, text, font, max_width)
+    bbox = draw.textbbox((0, 0), "测试Ag", font=font)
+    line_height = bbox[3] - bbox[1] + line_gap
+    for idx, line in enumerate(lines):
+        draw.text((x, y + idx * line_height), line, font=font, fill=fill)
+    return y + len(lines) * line_height
 
 
 def parse_json_text(text):
@@ -80,76 +125,61 @@ def build_item_struct(data_line, xhs_line):
     if len(parts) < 6:
         return {
             "tag": "好物",
-            "html": data_line or "未识别商品",
+            "name": data_line or "未识别商品",
+            "discount": "",
+            "old_price": "",
+            "new_price": "",
+            "desc": "",
             "xhs_line": xhs_line,
         }
     tag, name, discount, old_price, new_price, desc = parts[:6]
-    
-    # 核心：在这里直接拼装成带蓝色高亮的 HTML 格式
-    html_format = f"{name} <span class='highlight-blue'>{discount}</span> 原{old_price} 现<span class='highlight-blue'>{new_price}</span>。{desc}"
-    
     return {
         "tag": (tag or "好物")[:2],
-        "html": html_format,
+        "name": name,
+        "discount": discount,
+        "old_price": old_price,
+        "new_price": new_price,
+        "desc": desc,
         "xhs_line": xhs_line,
     }
 
 
-def generate_poster_image(chat_id, items):
-    today_str = datetime.now().strftime("%Y年%m月%d日")
-    
-    # 你最爱的绝美排版 CSS
-    items_html = """
-    <style>
-        .zdm-item { margin-bottom: 32px !important; display: flex; align-items: flex-start; }
-        .zdm-item-num { font-size: 1.35em; font-weight: bold; color: #0A56A6; margin-right: 12px; line-height: 1.4; padding-top: 1px; }
-        .zdm-item-text-area { 
-            flex: 1; font-size: 1.25em; line-height: 1.45; color: #222; 
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;
-        }
-        .zdm-item-tag { background: #0A56A6; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; margin-right: 8px; vertical-align: text-bottom; display: inline-block; margin-bottom: 2px;}
-        .highlight-blue { font-weight: bold; color: #0A56A6; } 
-    </style>
-    """
-    
-    for index, item in enumerate(items):
-        items_html += f"""
-        <div class="zdm-item">
-          <span class="zdm-item-num">{index + 1}.</span>
-          <div class="zdm-item-text-area">
-            <span class="zdm-item-tag">{item['tag']}</span>
-            <span class="zdm-item-text">{item['html']}</span>
-          </div>
-        </div>
-        """
+def generate_poster_image(items):
+    bg = Image.new("RGB", (1200, 1600), "#FFFFFF")
+    draw = ImageDraw.Draw(bg)
 
-    temp_html_name = f"temp_{chat_id}.html"
-    image_name = f"poster_{chat_id}.png"
+    title_font = get_font(68, True)
+    sub_font = get_font(34)
+    num_font = get_font(38, True)
+    body_font = get_font(32)
+    small_font = get_font(26)
 
-    try:
-        # 读取你上传的 HTML 模板文件
-        with open("poster_template.html", "r", encoding="utf-8") as f:
-            template = f.read()
-        final_html = template.replace("{{DATE}}", today_str).replace("{{ITEMS_HTML}}", items_html)
-        
-        with open(temp_html_name, "w", encoding="utf-8") as f:
-            f.write(final_html)
+    draw.rectangle([(0, 0), (1200, 170)], fill="#0A56A6")
+    draw.text((60, 38), "值得买加拿大站", fill="white", font=title_font)
+    draw.text((63, 112), f"{datetime.now().strftime('%Y年%m月%d日')} 今日折扣速览", fill="#D9E7F7", font=sub_font)
 
-        # 生成截图
-        hti.screenshot(html_file=temp_html_name, save_as=image_name)
+    y = 220
+    for idx, item in enumerate(items, start=1):
+        if y > 1450:
+            break
+        draw.text((60, y), f"{idx}.", fill="#0A56A6", font=num_font)
+        draw.rounded_rectangle([(130, y + 2), (214, y + 38)], radius=8, fill="#0A56A6")
+        draw.text((144, y + 4), item["tag"], fill="white", font=small_font)
 
-        # 读取图片变成内存数据发给 Telegram
-        with open(image_name, 'rb') as photo:
-            img_bytes = photo.read()
-            
-    finally:
-        # 打扫战场，删掉临时文件
-        if os.path.exists(temp_html_name):
-            os.remove(temp_html_name)
-        if os.path.exists(image_name):
-            os.remove(image_name)
-            
-    out = io.BytesIO(img_bytes)
+        text_x = 235
+        y_after_name = draw_multiline(draw, item["name"], get_font(34, True), text_x, y, 900, "#222222", 6)
+        detail = f"{item['discount']}  原{item['old_price']}  现{item['new_price']}".strip()
+        if detail:
+            draw.text((text_x, y_after_name), detail, fill="#0A56A6", font=body_font)
+            y_after_name += 48
+        desc_text = item["desc"] or item["xhs_line"]
+        y = draw_multiline(draw, desc_text, body_font, text_x, y_after_name, 900, "#333333", 10) + 18
+        draw.line([(60, y), (1140, y)], fill="#D7E4F3", width=2)
+        y += 18
+
+    draw.text((60, 1520), "更多加拿大好价和折扣码，记得及时收藏。", fill="#0A56A6", font=sub_font)
+    out = io.BytesIO()
+    bg.save(out, format="PNG")
     out.seek(0)
     return out
 
@@ -201,17 +231,13 @@ def handle_photo(message):
 
         if current_count >= ITEMS_TARGET:
             bot.send_message(chat_id, "已收齐，正在合成海报和文案...")
-            
-            # 使用 Html2Image 生成海报
-            poster_io = generate_poster_image(chat_id, user_cart[chat_id]["poster_data"])
-            bot.send_photo(chat_id, poster_io)
+            bot.send_photo(chat_id, generate_poster_image(user_cart[chat_id]["poster_data"]))
             bot.send_message(chat_id, build_xhs_copy(user_cart[chat_id]["xhs"]))
             reset_user(chat_id)
-            
     except Exception as exc:
         bot.reply_to(message, f"处理图片失败：{exc}")
 
 
 if __name__ == "__main__":
-    print("news blue bot is running (Html2Image Edition)")
+    print("news blue bot is running")
     bot.polling(none_stop=True)
