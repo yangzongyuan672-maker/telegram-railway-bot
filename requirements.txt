@@ -1,4 +1,5 @@
-pyTelegramBotAPI==4.26.0
-google-generativeai
+pyTelegramBotAPI
 html2image
-pillow
+Pillow
+google-generativeai
+
