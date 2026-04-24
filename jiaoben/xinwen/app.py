@@ -5,12 +5,10 @@ import re
 from datetime import datetime
 
 import telebot
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from html2image import Html2Image  # 换回了强大的网页排版工具
 
-load_dotenv()
 
 # 安全读取环境变量，不会暴露你的 API
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
