@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { margin: 0; padding: 0; background: #fff; width: 1200px; height: 1600px; overflow: hidden; }
+  
+  .zdm-poster-container {
+    width: 1200px;
+    height: 1600px;
+    background-color: #ffffff;
+    padding: 60px 80px 40px 80px; 
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", STHeiti, sans-serif;
+  }
+  
+  .zdm-header-date { font-size: 36px; color: #888888; margin-bottom: 20px; letter-spacing: 1px; }
+  .zdm-header-title { font-size: 85px; font-weight: bold; color: #1a1a1a; margin: 0 0 30px 0; line-height: 1.2; font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, serif; letter-spacing: 2px; }
+  .zdm-exchange-rate { display: inline-flex; align-items: center; background-color: #f7f7f7; padding: 12px 30px; font-size: 32px; color: #666666; border-left: 10px solid #165d9c; margin-bottom: 35px; }
+
+  /* 列表布局 */
+  .zdm-item-list { display: flex; flex-direction: column; gap: 28px; }
+  
+  /* 核心修改：锁定最大显示 3 行，多余的物理切断 */
+  .zdm-item { 
+    font-size: 38px; color: #333333; line-height: 1.45; text-align: justify; 
+    display: flex; align-items: flex-start;
+  }
+  
+  .zdm-item-num { font-weight: 900; font-size: 42px; margin-right: 12px; color: #111; flex-shrink: 0; }
+  
+  .zdm-item-text-area {
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3; /* 强制最多只显示3行 */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 标签样式 */
+  .zdm-item-tag { display: inline-block; color: #ffffff; background-color: #165d9c; font-size: 28px; font-weight: 500; padding: 4px 14px; border-radius: 8px; margin-right: 12px; vertical-align: 4px; }
+  .highlight-blue { color: #165d9c; font-weight: bold; }
+
+  /* 底部固定 */
+  .zdm-footer { margin-top: auto; padding-top: 25px; border-top: 3px dashed #eeeeee; font-size: 30px; color: #aaaaaa; display: flex; justify-content: space-between; align-items: center; }
+</style>
+</head>
+<body>
+  <div class="zdm-poster-container" id="poster">
+    <div class="zdm-header-date">{{DATE}}</div>
+    <h1 class="zdm-header-title">加拿大今天什么打折了？</h1>
+    <div class="zdm-exchange-rate">CAD → CNY 汇率: 5.06</div>
+    <div class="zdm-item-list">
+      {{ITEMS_HTML}}
+    </div>
+    <div class="zdm-footer">
+      <span>一分钟get加拿大今日神价</span>
+      <span>1/1</span>
+    </div>
+  </div>
+</body>
+</html>
