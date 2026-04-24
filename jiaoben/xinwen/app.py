@@ -2,6 +2,7 @@ import io
 import json
 import os
 import re
+import urllib.request
 from datetime import datetime
 
 import telebot
@@ -25,10 +26,30 @@ if not GEMINI_API_KEY:
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 client = genai.Client(api_key=GEMINI_API_KEY)
 user_cart = {}
+FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+FONT_URLS = {
+    "regular": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+    "bold": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Bold.otf",
+}
+
+
+def ensure_font_file(kind):
+    os.makedirs(FONT_DIR, exist_ok=True)
+    local_path = os.path.join(FONT_DIR, f"NotoSansCJKsc-{kind}.otf")
+    if os.path.exists(local_path):
+        return local_path
+    try:
+        urllib.request.urlretrieve(FONT_URLS[kind], local_path)
+        return local_path
+    except Exception:
+        return None
 
 
 def get_font(size, bold=False):
     paths = []
+    downloaded = ensure_font_file("bold" if bold else "regular")
+    if downloaded:
+        paths.append(downloaded)
     if bold:
         paths += [
             "C:/Windows/Fonts/msyhbd.ttc",
