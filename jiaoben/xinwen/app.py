@@ -148,36 +148,52 @@ def generate_poster_image(items):
     bg = Image.new("RGB", (1200, 1600), "#FFFFFF")
     draw = ImageDraw.Draw(bg)
 
-    title_font = get_font(68, True)
-    sub_font = get_font(34)
-    num_font = get_font(38, True)
-    body_font = get_font(32)
+    date_font = get_font(38)
+    title_font = get_font(74, True)
+    rate_font = get_font(34)
+    num_font = get_font(46, True)
+    name_font = get_font(34)
+    detail_font = get_font(30)
+    price_font = get_font(34, True)
     small_font = get_font(26)
 
-    draw.rectangle([(0, 0), (1200, 170)], fill="#0A56A6")
-    draw.text((60, 38), "值得买加拿大站", fill="white", font=title_font)
-    draw.text((63, 112), f"{datetime.now().strftime('%Y年%m月%d日')} 今日折扣速览", fill="#D9E7F7", font=sub_font)
+    draw.text((78, 56), datetime.now().strftime("%Y年%m月%d日"), fill="#6B6B6B", font=date_font)
+    draw.text((78, 118), "加拿大今天什么打折了？", fill="#171717", font=title_font)
+    draw.rectangle([(78, 255), (1120, 315)], fill="#F3F3F3")
+    draw.rectangle([(78, 255), (90, 315)], fill="#0A56A6")
+    draw.text((122, 265), "CAD → CNY 汇率: 5.06", fill="#6F6F6F", font=rate_font)
 
-    y = 220
+    y = 360
     for idx, item in enumerate(items, start=1):
-        if y > 1450:
+        if y > 1400:
             break
-        draw.text((60, y), f"{idx}.", fill="#0A56A6", font=num_font)
-        draw.rounded_rectangle([(130, y + 2), (214, y + 38)], radius=8, fill="#0A56A6")
-        draw.text((144, y + 4), item["tag"], fill="white", font=small_font)
+        draw.text((82, y), f"{idx}.", fill="#0A56A6", font=num_font)
+        draw.rounded_rectangle([(138, y + 8), (238, y + 62)], radius=6, fill="#0A56A6")
+        draw.text((160, y + 14), item["tag"], fill="white", font=get_font(28, True))
 
-        text_x = 235
-        y_after_name = draw_multiline(draw, item["name"], get_font(34, True), text_x, y, 900, "#222222", 6)
-        detail = f"{item['discount']}  原{item['old_price']}  现{item['new_price']}".strip()
-        if detail:
-            draw.text((text_x, y_after_name), detail, fill="#0A56A6", font=body_font)
-            y_after_name += 48
+        text_x = 268
+        name_limit = 820
+        y_after_name = draw_multiline(draw, item["name"], name_font, text_x, y, name_limit, "#171717", 8)
+
+        detail_x = text_x
+        if item["discount"]:
+            draw.text((detail_x, y_after_name), item["discount"], fill="#0A56A6", font=price_font)
+            discount_width = draw.textbbox((0, 0), item["discount"], font=price_font)[2]
+            detail_x += discount_width + 22
+        if item["old_price"]:
+            old_text = f"原{item['old_price']}"
+            draw.text((detail_x, y_after_name), old_text, fill="#171717", font=detail_font)
+            old_width = draw.textbbox((0, 0), old_text, font=detail_font)[2]
+            detail_x += old_width + 18
+        if item["new_price"]:
+            new_text = f"现{item['new_price']}"
+            draw.text((detail_x, y_after_name), new_text, fill="#0A56A6", font=price_font)
+        y_after_name += 52
+
         desc_text = item["desc"] or item["xhs_line"]
-        y = draw_multiline(draw, desc_text, body_font, text_x, y_after_name, 900, "#333333", 10) + 18
-        draw.line([(60, y), (1140, y)], fill="#D7E4F3", width=2)
-        y += 18
+        y = draw_multiline(draw, desc_text, detail_font, text_x, y_after_name, 830, "#171717", 8) + 42
 
-    draw.text((60, 1520), "更多加拿大好价和折扣码，记得及时收藏。", fill="#0A56A6", font=sub_font)
+    draw.text((80, 1510), "更多加拿大好价和折扣码，记得及时收藏。", fill="#0A56A6", font=rate_font)
     out = io.BytesIO()
     bg.save(out, format="PNG")
     out.seek(0)
