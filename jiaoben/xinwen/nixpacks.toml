@@ -1,1 +1,2 @@
-
+[phases.setup]
+aptPkgs = ["wget", "chromium", "chromium-driver"]
